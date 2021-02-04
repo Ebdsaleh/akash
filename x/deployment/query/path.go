@@ -37,29 +37,6 @@ func getGroupPath(id types.GroupID) string {
 	return fmt.Sprintf("%s/%s/%v/%v", groupPath, id.Owner, id.DSeq, id.GSeq)
 }
 
-// ParseDeploymentPath returns DeploymentID details with provided queries, and return
-// error if occurred due to wrong query
-func ParseDeploymentPath(parts []string) (types.DeploymentID, error) {
-	if len(parts) < 2 {
-		return types.DeploymentID{}, ErrInvalidPath
-	}
-
-	owner, err := sdk.AccAddressFromBech32(parts[0])
-	if err != nil {
-		return types.DeploymentID{}, err
-	}
-
-	dseq, err := strconv.ParseUint(parts[1], 10, 64)
-	if err != nil {
-		return types.DeploymentID{}, err
-	}
-
-	return types.DeploymentID{
-		Owner: owner.String(),
-		DSeq:  dseq,
-	}, nil
-}
-
 // parseDepFiltersPath returns DeploymentFilters details with provided queries, and return
 // error if occurred due to wrong query
 func parseDepFiltersPath(parts []string) (DeploymentFilters, bool, error) {
@@ -96,7 +73,7 @@ func ParseGroupPath(parts []string) (types.GroupID, error) {
 		return types.GroupID{}, ErrInvalidPath
 	}
 
-	did, err := ParseDeploymentPath(parts[0:2])
+	did, err := types.ParseDeploymentPath(parts[0:2])
 	if err != nil {
 		return types.GroupID{}, err
 	}

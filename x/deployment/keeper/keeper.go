@@ -157,7 +157,6 @@ func (k Keeper) OnCloseGroup(ctx sdk.Context, group types.Group) error {
 	)
 
 	store.Set(key, k.cdc.MustMarshalBinaryBare(&group))
-	k.updateOpenGroupsIndex(ctx, group)
 	return nil
 }
 
@@ -186,25 +185,6 @@ func (k Keeper) WithDeploymentsActive(ctx sdk.Context, fn func(types.Deployment)
 		if val.State != types.DeploymentActive {
 			continue
 		}
-		if stop := fn(val); stop {
-			break
-		}
-	}
-}
-
-// WithOpenGroups filters to only those with State: Open
-func (k Keeper) WithOpenGroups(ctx sdk.Context, fn func(types.Group) bool) {
-	store := ctx.KVStore(k.skey)
-	iter := sdk.KVStorePrefixIterator(store, groupOpenPrefix)
-	defer iter.Close()
-	for ; iter.Valid(); iter.Next() {
-		gKey, err := groupOpenKeyConvert(iter.Key())
-		if err != nil {
-			continue
-		}
-		buf := store.Get(gKey)
-		var val types.Group
-		k.cdc.MustUnmarshalBinaryBare(buf, &val)
 		if stop := fn(val); stop {
 			break
 		}
@@ -277,9 +257,40 @@ func (k Keeper) SetParams(ctx sdk.Context, params types.Params) {
 }
 
 func (k Keeper) OnEscrowAccountClosed(ctx sdk.Context, obj etypes.Account) {
+	if obj.ID.Scope != types.EscrowScope {
+		return
+	}
+
+	id, found := types.DeploymentIDFromEscrowAccount(obj.ID)
+	if !found {
+		return
+	}
+
+	deployment, found := k.GetDeployment(ctx, id)
+	if !found {
+		return
+	}
+
+	if deployment.State != types.DeploymentActive {
+		return
+	}
+
+	deployment.State = types.DeploymentClosed
+	k.updateDeployment(ctx, deployment)
+	for _, group := range k.GetGroups(ctx, deployment.ID()) {
+		if group.ValidateClosable() == nil {
+			k.OnCloseGroup(ctx, group)
+		}
+	}
 }
 
 func (k Keeper) OnEscrowPaymentClosed(ctx sdk.Context, obj etypes.Payment) {
+}
+
+func (k Keeper) updateDeployment(ctx sdk.Context, obj types.Deployment) {
+	store := ctx.KVStore(k.skey)
+	key := deploymentKey(obj.ID())
+	store.Set(key, k.cdc.MustMarshalBinaryBare(&obj))
 }
 
 func (k Keeper) updateGroup(ctx sdk.Context, group types.Group) {
@@ -287,19 +298,4 @@ func (k Keeper) updateGroup(ctx sdk.Context, group types.Group) {
 	key := groupKey(group.ID())
 
 	store.Set(key, k.cdc.MustMarshalBinaryBare(&group))
-	k.updateOpenGroupsIndex(ctx, group)
-}
-
-// updateOpenGroupsIndex wraps all calls to the index which tracks open Groups.
-func (k Keeper) updateOpenGroupsIndex(ctx sdk.Context, group types.Group) {
-	// Update the Open Groups prefixed index
-	store := ctx.KVStore(k.skey)
-	openKey := groupOpenKey(group.ID())
-
-	switch group.State {
-	case types.GroupOpen:
-		store.Set(openKey, []byte{})
-	default:
-		store.Delete(openKey)
-	}
 }

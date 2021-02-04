@@ -52,7 +52,7 @@ func queryDeployments(ctx sdk.Context, path []string, _ abci.RequestQuery, keepe
 func queryDeployment(ctx sdk.Context, path []string, _ abci.RequestQuery, keeper keeper.Keeper,
 	legacyQuerierCdc *codec.LegacyAmino) ([]byte, error) {
 
-	id, err := ParseDeploymentPath(path)
+	id, err := types.ParseDeploymentPath(path)
 	if err != nil {
 		return nil, sdkerrors.Wrap(types.ErrInternal, err.Error())
 	}

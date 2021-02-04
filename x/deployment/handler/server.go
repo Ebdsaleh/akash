@@ -94,11 +94,22 @@ func (ms msgServer) CreateDeployment(goCtx context.Context, msg *types.MsgCreate
 
 func (ms msgServer) DepositDeployment(goCtx context.Context, msg *types.MsgDepositDeployment) (*types.MsgDepositDeploymentResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	deployment, found := ms.deployment.GetDeployment(ctx, msg.ID)
+	if !found {
+		return &types.MsgDepositDeploymentResponse{}, types.ErrDeploymentNotFound
+	}
+
+	if deployment.State != types.DeploymentActive {
+		return &types.MsgDepositDeploymentResponse{}, types.ErrDeploymentClosed
+	}
+
 	if err := ms.escrow.AccountDeposit(ctx,
 		types.EscrowAccountForDeployment(msg.ID),
 		msg.Amount); err != nil {
 		return &types.MsgDepositDeploymentResponse{}, err
 	}
+
 	return &types.MsgDepositDeploymentResponse{}, nil
 }
 
@@ -110,12 +121,16 @@ func (ms msgServer) UpdateDeployment(goCtx context.Context, msg *types.MsgUpdate
 		return nil, types.ErrDeploymentNotFound
 	}
 
+	if deployment.State != types.DeploymentActive {
+		return &types.MsgUpdateDeploymentResponse{}, types.ErrDeploymentClosed
+	}
+
 	if !bytes.Equal(msg.Version, deployment.Version) {
 		deployment.Version = msg.Version
 	}
 
 	if err := ms.deployment.UpdateDeployment(ctx, deployment); err != nil {
-		return nil, errors.Wrap(types.ErrInternal, err.Error())
+		return &types.MsgUpdateDeploymentResponse{}, errors.Wrap(types.ErrInternal, err.Error())
 	}
 
 	return &types.MsgUpdateDeploymentResponse{}, nil
@@ -126,11 +141,11 @@ func (ms msgServer) CloseDeployment(goCtx context.Context, msg *types.MsgCloseDe
 
 	deployment, found := ms.deployment.GetDeployment(ctx, msg.ID)
 	if !found {
-		return nil, types.ErrDeploymentNotFound
+		return &types.MsgCloseDeploymentResponse{}, types.ErrDeploymentNotFound
 	}
 
-	if deployment.State == types.DeploymentClosed {
-		return nil, types.ErrDeploymentClosed
+	if deployment.State != types.DeploymentActive {
+		return &types.MsgCloseDeploymentResponse{}, types.ErrDeploymentClosed
 	}
 
 	if err := ms.escrow.AccountClose(ctx,
@@ -139,7 +154,7 @@ func (ms msgServer) CloseDeployment(goCtx context.Context, msg *types.MsgCloseDe
 		return &types.MsgCloseDeploymentResponse{}, err
 	}
 
-	// todo: maybe assert that it was closed.
+	// Update state via escrow hooks.
 
 	return &types.MsgCloseDeploymentResponse{}, nil
 }
