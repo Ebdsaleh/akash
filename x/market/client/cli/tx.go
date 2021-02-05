@@ -23,7 +23,7 @@ func GetTxCmd(key string) *cobra.Command {
 	cmd.AddCommand(
 		cmdCreateBid(key),
 		cmdCloseBid(key),
-		cmdCloseOrder(key),
+		cmdCloseLease(key),
 	)
 	return cmd
 }
@@ -109,9 +109,9 @@ func cmdCloseBid(key string) *cobra.Command {
 	return cmd
 }
 
-func cmdCloseOrder(key string) *cobra.Command {
+func cmdCloseLease(key string) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "order-close",
+		Use:   "lease-close",
 		Short: fmt.Sprintf("Close a %s order", key),
 		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -120,13 +120,13 @@ func cmdCloseOrder(key string) *cobra.Command {
 				return err
 			}
 
-			id, err := OrderIDFromFlags(cmd.Flags())
+			id, err := LeaseIDFromFlags(clientCtx, cmd.Flags())
 			if err != nil {
 				return err
 			}
 
-			msg := &types.MsgCloseOrder{
-				OrderID: id,
+			msg := &types.MsgCloseLease{
+				LeaseID: id,
 			}
 
 			if err := msg.ValidateBasic(); err != nil {
@@ -138,7 +138,8 @@ func cmdCloseOrder(key string) *cobra.Command {
 	}
 
 	flags.AddTxFlagsToCmd(cmd)
-	AddOrderIDFlags(cmd.Flags())
+	AddLeaseIDFlags(cmd.Flags())
+	MarkReqLeaseIDFlags(cmd)
 
 	return cmd
 }

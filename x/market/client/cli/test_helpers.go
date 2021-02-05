@@ -44,8 +44,8 @@ func TxCloseBidExec(clientCtx client.Context, orderID types.OrderID, from fmt.St
 	return clitestutil.ExecTestCLICmd(clientCtx, cmdCloseBid(key), args)
 }
 
-// TxCloseOrderExec is used for testing close order tx
-func TxCloseOrderExec(clientCtx client.Context, orderID types.OrderID, from fmt.Stringer,
+// TxCloseLeaseExec is used for testing close order tx
+func TxCloseLeaseExec(clientCtx client.Context, orderID types.OrderID, from fmt.Stringer,
 	extraArgs ...string) (sdktest.BufferWriter, error) {
 	args := []string{
 		fmt.Sprintf("--from=%s", from.String()),
@@ -57,7 +57,7 @@ func TxCloseOrderExec(clientCtx client.Context, orderID types.OrderID, from fmt.
 
 	args = append(args, extraArgs...)
 
-	return clitestutil.ExecTestCLICmd(clientCtx, cmdCloseOrder(key), args)
+	return clitestutil.ExecTestCLICmd(clientCtx, cmdCloseLease(key), args)
 }
 
 // QueryOrdersExec is used for testing orders query

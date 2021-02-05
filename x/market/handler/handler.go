@@ -29,8 +29,8 @@ func NewHandler(keepers Keepers) sdk.Handler {
 			res, err := ms.CreateLease(sdk.WrapSDKContext(ctx), msg)
 			return sdk.WrapServiceResult(ctx, res, err)
 
-		case *types.MsgCloseOrder:
-			res, err := ms.CloseOrder(sdk.WrapSDKContext(ctx), msg)
+		case *types.MsgCloseLease:
+			res, err := ms.CloseLease(sdk.WrapSDKContext(ctx), msg)
 			return sdk.WrapServiceResult(ctx, res, err)
 
 		default:

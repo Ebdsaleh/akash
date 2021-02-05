@@ -8,12 +8,12 @@ const (
 	MsgTypeCreateBid   = "create-bid"
 	MsgTypeWithdrawBid = "withdraw-bid"
 	MsgTypeCreateLease = "create-lease"
+	MsgTypeCloseLease  = "close-lease"
 	MsgTypeCloseBid    = "close-bid"
-	MsgTypeCloseOrder  = "close-order"
 )
 
 var (
-	_, _, _ sdk.Msg = &MsgCreateBid{}, &MsgCloseBid{}, &MsgCloseOrder{}
+	_, _, _ sdk.Msg = &MsgCreateBid{}, &MsgCloseBid{}, &MsgCloseLease{}
 )
 
 // NewMsgCreateBid creates a new MsgCreateBid instance
@@ -171,27 +171,27 @@ func (msg MsgCloseBid) ValidateBasic() error {
 	return msg.BidID.Validate()
 }
 
-// NewMsgCloseOrder creates a new MsgCloseOrder instance
-func NewMsgCloseOrder(id OrderID) *MsgCloseOrder {
-	return &MsgCloseOrder{
-		OrderID: id,
+// NewMsgCloseLease creates a new MsgCloseLease instance
+func NewMsgCloseLease(id LeaseID) *MsgCloseLease {
+	return &MsgCloseLease{
+		LeaseID: id,
 	}
 }
 
 // Route implements the sdk.Msg interface
-func (msg MsgCloseOrder) Route() string { return RouterKey }
+func (msg MsgCloseLease) Route() string { return RouterKey }
 
 // Type implements the sdk.Msg interface
-func (msg MsgCloseOrder) Type() string { return MsgTypeCloseOrder }
+func (msg MsgCloseLease) Type() string { return MsgTypeCloseLease }
 
 // GetSignBytes encodes the message for signing
-func (msg MsgCloseOrder) GetSignBytes() []byte {
+func (msg MsgCloseLease) GetSignBytes() []byte {
 	return sdk.MustSortJSON(ModuleCdc.MustMarshalJSON(&msg))
 }
 
 // GetSigners defines whose signature is required
-func (msg MsgCloseOrder) GetSigners() []sdk.AccAddress {
-	owner, err := sdk.AccAddressFromBech32(msg.OrderID.Owner)
+func (msg MsgCloseLease) GetSigners() []sdk.AccAddress {
+	owner, err := sdk.AccAddressFromBech32(msg.LeaseID.Owner)
 	if err != nil {
 		panic(err)
 	}
@@ -199,7 +199,7 @@ func (msg MsgCloseOrder) GetSigners() []sdk.AccAddress {
 	return []sdk.AccAddress{owner}
 }
 
-// ValidateBasic method for MsgCloseOrder
-func (msg MsgCloseOrder) ValidateBasic() error {
-	return msg.OrderID.Validate()
+// ValidateBasic method for MsgCloseLease
+func (msg MsgCloseLease) ValidateBasic() error {
+	return msg.LeaseID.Validate()
 }

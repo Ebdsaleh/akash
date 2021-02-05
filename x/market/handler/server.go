@@ -199,30 +199,30 @@ func (ms msgServer) CreateLease(goCtx context.Context, msg *types.MsgCreateLease
 	return &types.MsgCreateLeaseResponse{}, nil
 }
 
-func (ms msgServer) CloseOrder(goCtx context.Context, msg *types.MsgCloseOrder) (*types.MsgCloseOrderResponse, error) {
+func (ms msgServer) CloseLease(goCtx context.Context, msg *types.MsgCloseLease) (*types.MsgCloseLeaseResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
 	// close payment
 
-	order, found := ms.keepers.Market.GetOrder(ctx, msg.OrderID)
+	order, found := ms.keepers.Market.GetOrder(ctx, msg.LeaseID.OrderID())
 	if !found {
 		return nil, types.ErrUnknownOrder
 	}
 
 	if order.State != types.OrderActive {
-		return &types.MsgCloseOrderResponse{}, types.ErrOrderClosed
+		return &types.MsgCloseLeaseResponse{}, types.ErrOrderClosed
 	}
 
 	lease, found := ms.keepers.Market.LeaseForOrder(ctx, order.ID())
 	if !found {
-		return &types.MsgCloseOrderResponse{}, types.ErrNoLeaseForOrder
+		return &types.MsgCloseLeaseResponse{}, types.ErrNoLeaseForOrder
 	}
 
 	if err := ms.keepers.Escrow.PaymentClose(ctx,
 		dtypes.EscrowAccountForDeployment(lease.ID().DeploymentID()),
 		types.EscrowPaymentForBid(lease.ID().BidID()),
 	); err != nil {
-		return &types.MsgCloseOrderResponse{}, err
+		return &types.MsgCloseLeaseResponse{}, err
 	}
 
 	// closed by handlers.
@@ -231,5 +231,5 @@ func (ms msgServer) CloseOrder(goCtx context.Context, msg *types.MsgCloseOrder) 
 	// ms.keepers.Market.OnLeaseClosed(ctx, lease)
 	// ms.keepers.Deployment.OnOrderClosed(ctx, order.ID().GroupID())
 
-	return &types.MsgCloseOrderResponse{}, nil
+	return &types.MsgCloseLeaseResponse{}, nil
 }
