@@ -215,7 +215,6 @@ func (ms msgServer) StartGroup(goCtx context.Context, msg *types.MsgStartGroup) 
 		return &types.MsgStartGroupResponse{}, types.ErrGroupNotFound
 	}
 
-	// if Group already closed; return the validation error
 	err := group.ValidateStartable()
 	if err != nil {
 		return &types.MsgStartGroupResponse{}, err

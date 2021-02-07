@@ -12,4 +12,9 @@ message Params {
     (gogoproto.jsontag)    = "bid_min_deposit",
     (gogoproto.moretags)   = "yaml:\"bid_min_deposit\""
   ];
+  uint32 order_max_bids = 2 [
+    (gogoproto.customname) = "OrderMaxBids",
+    (gogoproto.jsontag)    = "order_max_bids",
+    (gogoproto.moretags)   = "yaml:\"order_max_bids\""
+  ];
 }

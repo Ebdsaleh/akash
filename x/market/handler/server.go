@@ -28,11 +28,18 @@ var _ types.MsgServer = msgServer{}
 func (ms msgServer) CreateBid(goCtx context.Context, msg *types.MsgCreateBid) (*types.MsgCreateBidResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
 
-	minDeposit := ms.keepers.Market.GetParams(ctx).BidMinDeposit
+	params := ms.keepers.Market.GetParams(ctx)
+
+	minDeposit := params.BidMinDeposit
 	if msg.Deposit.Denom != minDeposit.Denom {
 		return nil, types.ErrInvalidDeposit
 	}
 	if minDeposit.Amount.GT(msg.Deposit.Amount) {
+		return nil, types.ErrInvalidDeposit
+	}
+
+	if ms.keepers.Market.BidCountForOrder(ctx, msg.Order) > params.OrderMaxBids {
+		// TODOERR
 		return nil, types.ErrInvalidDeposit
 	}
 
@@ -172,14 +179,16 @@ func (ms msgServer) CreateLease(goCtx context.Context, msg *types.MsgCreateLease
 		return &types.MsgCreateLeaseResponse{}, types.ErrOrderNotFound
 	}
 
-	_, found = ms.keepers.Deployment.GetGroup(ctx, order.ID().GroupID())
+	group, found := ms.keepers.Deployment.GetGroup(ctx, order.ID().GroupID())
 	if !found {
 		// TODO: not found
 		return &types.MsgCreateLeaseResponse{}, types.ErrOrderNotFound
 	}
 
-	// check group state.
-	// check deployment state.
+	if group.State != dtypes.GroupOpen {
+		// TODO: not found
+		return &types.MsgCreateLeaseResponse{}, types.ErrOrderNotFound
+	}
 
 	owner, err := sdk.AccAddressFromBech32(msg.BidID.Provider)
 	if err != nil {
@@ -195,14 +204,36 @@ func (ms msgServer) CreateLease(goCtx context.Context, msg *types.MsgCreateLease
 	}
 
 	ms.keepers.Market.CreateLease(ctx, bid)
+	ms.keepers.Market.OnOrderMatched(ctx, order)
+	ms.keepers.Market.OnBidMatched(ctx, bid)
+
+	// close losing bids
+	var lostbids []types.Bid
+	ms.keepers.Market.WithBidsForOrder(ctx, msg.BidID.OrderID(), func(bid types.Bid) bool {
+		if bid.ID().Equals(msg.BidID) {
+			return false
+		}
+		if bid.State != types.BidOpen {
+			return false
+		}
+
+		lostbids = append(lostbids, bid)
+		return false
+	})
+
+	for _, bid := range lostbids {
+		ms.keepers.Market.OnBidLost(ctx, bid)
+		if err := ms.keepers.Escrow.AccountClose(ctx,
+			types.EscrowAccountForBid(bid.ID())); err != nil {
+			return &types.MsgCreateLeaseResponse{}, err
+		}
+	}
 
 	return &types.MsgCreateLeaseResponse{}, nil
 }
 
 func (ms msgServer) CloseLease(goCtx context.Context, msg *types.MsgCloseLease) (*types.MsgCloseLeaseResponse, error) {
 	ctx := sdk.UnwrapSDKContext(goCtx)
-
-	// close payment
 
 	order, found := ms.keepers.Market.GetOrder(ctx, msg.LeaseID.OrderID())
 	if !found {
@@ -216,6 +247,10 @@ func (ms msgServer) CloseLease(goCtx context.Context, msg *types.MsgCloseLease) 
 	lease, found := ms.keepers.Market.LeaseForOrder(ctx, order.ID())
 	if !found {
 		return &types.MsgCloseLeaseResponse{}, types.ErrNoLeaseForOrder
+	}
+
+	if lease.State != types.LeaseActive {
+		return &types.MsgCloseLeaseResponse{}, types.ErrOrderClosed
 	}
 
 	if err := ms.keepers.Escrow.PaymentClose(ctx,

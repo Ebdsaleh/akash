@@ -10,11 +10,14 @@ import (
 var _ paramtypes.ParamSet = (*Params)(nil)
 
 var (
-	defaultBidMinDeposit = sdk.NewCoin("uakt", sdk.NewInt(15))
+	defaultBidMinDeposit        = sdk.NewCoin("uakt", sdk.NewInt(15))
+	defaultOrderMaxBids  uint32 = 20
+	maxOrderMaxBids      uint32 = 500
 )
 
 const (
 	keyBidMinDeposit = "BidMinDeposit"
+	keyOrderMaxBids  = "OrderMaxBids"
 )
 
 func ParamKeyTable() paramtypes.KeyTable {
@@ -23,13 +26,14 @@ func ParamKeyTable() paramtypes.KeyTable {
 
 func (p *Params) ParamSetPairs() paramtypes.ParamSetPairs {
 	return paramtypes.ParamSetPairs{
-		paramtypes.NewParamSetPair([]byte(keyBidMinDeposit), &p.BidMinDeposit, validateCoin),
+		paramtypes.NewParamSetPair([]byte(keyBidMinDeposit), &p.OrderMaxBids, validateOrderMaxBids),
 	}
 }
 
 func DefaultParams() Params {
 	return Params{
 		BidMinDeposit: defaultBidMinDeposit,
+		OrderMaxBids:  defaultOrderMaxBids,
 	}
 }
 
@@ -38,6 +42,9 @@ func (p Params) Validate() error {
 		return err
 	}
 
+	if err := validateOrderMaxBids(p.OrderMaxBids); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -45,6 +52,24 @@ func validateCoin(i interface{}) error {
 	_, ok := i.(sdk.Coin)
 	if !ok {
 		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+
+	return nil
+}
+
+func validateOrderMaxBids(i interface{}) error {
+	val, ok := i.(uint32)
+
+	if !ok {
+		return fmt.Errorf("invalid parameter type: %T", i)
+	}
+
+	if val == 0 {
+		return fmt.Errorf("order max bids too low")
+	}
+
+	if val > maxOrderMaxBids {
+		return fmt.Errorf("order max bids too high")
 	}
 
 	return nil

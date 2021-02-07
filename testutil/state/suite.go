@@ -15,6 +15,8 @@ import (
 	"github.com/ovrclk/akash/testutil"
 	dkeeper "github.com/ovrclk/akash/x/deployment/keeper"
 	dtypes "github.com/ovrclk/akash/x/deployment/types"
+	ekeeper "github.com/ovrclk/akash/x/escrow/keeper"
+	etypes "github.com/ovrclk/akash/x/escrow/types"
 	"github.com/ovrclk/akash/x/market/keeper"
 	"github.com/ovrclk/akash/x/market/types"
 	mtypes "github.com/ovrclk/akash/x/market/types"
@@ -28,6 +30,7 @@ type TestSuite struct {
 	t       testing.TB
 	ms      sdk.CommitMultiStore
 	ctx     sdk.Context
+	ekeeper ekeeper.Keeper
 	mkeeper keeper.Keeper
 	dkeeper dkeeper.Keeper
 	pkeeper pkeeper.Keeper
@@ -41,12 +44,14 @@ func SetupTestSuite(t testing.TB, codec codec.Marshaler) *TestSuite {
 		t: t,
 	}
 
+	eKey := sdk.NewKVStoreKey(etypes.StoreKey)
 	mKey := sdk.NewKVStoreKey(types.StoreKey)
 	dKey := sdk.NewKVStoreKey(dtypes.StoreKey)
 	pKey := sdk.NewKVStoreKey(ptypes.StoreKey)
 
 	db := dbm.NewMemDB()
 	suite.ms = store.NewCommitMultiStore(db)
+	suite.ms.MountStoreWithDB(eKey, sdk.StoreTypeIAVL, db)
 	suite.ms.MountStoreWithDB(mKey, sdk.StoreTypeIAVL, db)
 	suite.ms.MountStoreWithDB(dKey, sdk.StoreTypeIAVL, db)
 	suite.ms.MountStoreWithDB(pKey, sdk.StoreTypeIAVL, db)
@@ -57,7 +62,9 @@ func SetupTestSuite(t testing.TB, codec codec.Marshaler) *TestSuite {
 
 	newapp := app.Setup(false)
 
-	suite.mkeeper = keeper.NewKeeper(codec, mKey, newapp.GetSubspace(mtypes.ModuleName))
+	// XXX: unused?
+	suite.ekeeper = ekeeper.NewKeeper(codec, eKey, suite.bkeeper)
+	suite.mkeeper = keeper.NewKeeper(codec, mKey, newapp.GetSubspace(mtypes.ModuleName), suite.ekeeper)
 	suite.dkeeper = dkeeper.NewKeeper(codec, dKey, newapp.GetSubspace(dtypes.ModuleName))
 	suite.pkeeper = pkeeper.NewKeeper(codec, pKey)
 

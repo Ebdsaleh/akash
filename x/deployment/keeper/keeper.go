@@ -252,12 +252,23 @@ func (k Keeper) OnLeaseInsufficientFunds(ctx sdk.Context, id types.GroupID) {
 	k.updateGroup(ctx, group)
 }
 
-// OnBidClosed sets the group to state closed.
-// TODO: use "paused" or other restart-able state.  see #944
+// OnBidClosed sets the group to state paused.
 func (k Keeper) OnBidClosed(ctx sdk.Context, id types.GroupID) {
-	// TODO: assert state transition
-	group, _ := k.GetGroup(ctx, id)
-	group.State = types.GroupClosed
+	group, ok := k.GetGroup(ctx, id)
+	if !ok {
+		return
+	}
+
+	if group.State != types.GroupOpen {
+		return
+	}
+
+	ctx.EventManager().EmitEvent(
+		types.NewEventGroupPaused(group.ID()).
+			ToSDKEvent(),
+	)
+
+	group.State = types.GroupPaused
 	k.updateGroup(ctx, group)
 }
 

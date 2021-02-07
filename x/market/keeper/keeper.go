@@ -136,21 +136,18 @@ func (k Keeper) CreateLease(ctx sdk.Context, bid types.Bid) {
 
 // OnOrderMatched updates order state to matched
 func (k Keeper) OnOrderMatched(ctx sdk.Context, order types.Order) {
-	// TODO: assert state transition
 	order.State = types.OrderActive
 	k.updateOrder(ctx, order)
 }
 
 // OnBidActive updates bid state to matched
 func (k Keeper) OnBidMatched(ctx sdk.Context, bid types.Bid) {
-	// TODO: assert state transition
 	bid.State = types.BidActive
 	k.updateBid(ctx, bid)
 }
 
 // OnBidLost updates bid state to bid lost
 func (k Keeper) OnBidLost(ctx sdk.Context, bid types.Bid) {
-	// TODO: assert state transition
 	bid.State = types.BidLost
 	k.updateBid(ctx, bid)
 }
@@ -405,6 +402,7 @@ func (k Keeper) WithOrdersForGroup(ctx sdk.Context, id dtypes.GroupID, fn func(t
 func (k Keeper) WithBidsForOrder(ctx sdk.Context, id types.OrderID, fn func(types.Bid) bool) {
 	store := ctx.KVStore(k.skey)
 	iter := sdk.KVStorePrefixIterator(store, bidsForOrderPrefix(id))
+
 	defer iter.Close()
 	for ; iter.Valid(); iter.Next() {
 		var val types.Bid
@@ -413,6 +411,17 @@ func (k Keeper) WithBidsForOrder(ctx sdk.Context, id types.OrderID, fn func(type
 			break
 		}
 	}
+}
+
+func (k Keeper) BidCountForOrder(ctx sdk.Context, id types.OrderID) uint32 {
+	store := ctx.KVStore(k.skey)
+	iter := sdk.KVStorePrefixIterator(store, bidsForOrderPrefix(id))
+	defer iter.Close()
+	count := uint32(0)
+	for ; iter.Valid(); iter.Next() {
+		count++
+	}
+	return count
 }
 
 // GetParams returns the total set of deployment parameters.
