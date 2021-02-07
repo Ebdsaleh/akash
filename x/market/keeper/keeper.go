@@ -186,7 +186,6 @@ func (k Keeper) OnOrderClosed(ctx sdk.Context, order types.Order) {
 
 // OnInsufficientFunds updates lease state to insufficient funds
 func (k Keeper) OnInsufficientFunds(ctx sdk.Context, lease types.Lease) {
-	// TODO: assert state transition
 	switch lease.State {
 	case types.LeaseClosed, types.LeaseInsufficientFunds:
 		return
@@ -201,12 +200,12 @@ func (k Keeper) OnInsufficientFunds(ctx sdk.Context, lease types.Lease) {
 }
 
 // OnLeaseClosed updates lease state to closed
-func (k Keeper) OnLeaseClosed(ctx sdk.Context, lease types.Lease) {
+func (k Keeper) OnLeaseClosed(ctx sdk.Context, lease types.Lease, state types.Lease_State) {
 	switch lease.State {
 	case types.LeaseClosed, types.LeaseInsufficientFunds:
 		return
 	}
-	lease.State = types.LeaseClosed
+	lease.State = state
 	k.updateLease(ctx, lease)
 	ctx.Logger().Info("keeper closed lease", "lease", lease.ID())
 
@@ -227,7 +226,7 @@ func (k Keeper) OnGroupClosed(ctx sdk.Context, id dtypes.GroupID) {
 		k.WithBidsForOrder(ctx, order.ID(), func(bid types.Bid) bool {
 			k.OnBidClosed(ctx, bid)
 			if lease, ok := k.GetLease(ctx, types.LeaseID(bid.ID())); ok {
-				k.OnLeaseClosed(ctx, lease)
+				k.OnLeaseClosed(ctx, lease, types.LeaseClosed)
 			}
 			return false
 		})
@@ -439,6 +438,41 @@ func (k Keeper) OnEscrowAccountClosed(ctx sdk.Context, obj etypes.Account) {
 }
 
 func (k Keeper) OnEscrowPaymentClosed(ctx sdk.Context, obj etypes.Payment) {
+	id, ok := types.BidIDFromEscrowAccount(obj.AccountID, obj.PaymentID)
+	if !ok {
+		return
+	}
+
+	bid, ok := k.GetBid(ctx, id)
+	if !ok {
+		return
+	}
+
+	order, ok := k.GetOrder(ctx, id.OrderID())
+	if !ok {
+		return
+	}
+
+	lease, ok := k.GetLease(ctx, id.LeaseID())
+	if !ok {
+		return
+	}
+
+	if bid.State != types.BidActive {
+		return
+	}
+
+	k.OnOrderClosed(ctx, order)
+
+	if obj.State == etypes.PaymentOverdrawn {
+		k.OnLeaseClosed(ctx, lease, types.LeaseInsufficientFunds)
+	} else {
+		k.OnLeaseClosed(ctx, lease, types.LeaseClosed)
+	}
+
+	// TODO: ensure that the only time a payment is closed via this mechanism
+	// is when ...
+	// ms.keepers.Deployment.OnOrderClosed(ctx, order.ID().GroupID())
 }
 
 func (k Keeper) updateOrder(ctx sdk.Context, order types.Order) {

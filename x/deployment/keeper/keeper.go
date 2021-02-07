@@ -244,14 +244,6 @@ func (k Keeper) OnLeaseCreated(ctx sdk.Context, id types.GroupID) {
 	k.updateGroup(ctx, group)
 }
 
-// OnLeaseInsufficientFunds updates group state to group insufficient funds
-func (k Keeper) OnLeaseInsufficientFunds(ctx sdk.Context, id types.GroupID) {
-	// TODO: assert state transition
-	group, _ := k.GetGroup(ctx, id)
-	group.State = types.GroupInsufficientFunds
-	k.updateGroup(ctx, group)
-}
-
 // OnBidClosed sets the group to state paused.
 func (k Keeper) OnBidClosed(ctx sdk.Context, id types.GroupID) {
 	group, ok := k.GetGroup(ctx, id)
@@ -306,10 +298,6 @@ func (k Keeper) SetParams(ctx sdk.Context, params types.Params) {
 }
 
 func (k Keeper) OnEscrowAccountClosed(ctx sdk.Context, obj etypes.Account) {
-	if obj.ID.Scope != types.EscrowScope {
-		return
-	}
-
 	id, found := types.DeploymentIDFromEscrowAccount(obj.ID)
 	if !found {
 		return

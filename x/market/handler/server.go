@@ -130,7 +130,7 @@ func (ms msgServer) CloseBid(goCtx context.Context, msg *types.MsgCloseBid) (*ty
 	}
 
 	ms.keepers.Market.OnBidClosed(ctx, bid)
-	ms.keepers.Market.OnLeaseClosed(ctx, lease)
+	ms.keepers.Market.OnLeaseClosed(ctx, lease, types.LeaseClosed)
 	ms.keepers.Market.OnOrderClosed(ctx, order)
 	ms.keepers.Deployment.OnBidClosed(ctx, order.ID().GroupID())
 	telemetry.IncrCounter(1.0, "akash.order_closed")
@@ -261,10 +261,6 @@ func (ms msgServer) CloseLease(goCtx context.Context, msg *types.MsgCloseLease) 
 	}
 
 	// closed by handlers.
-
-	// ms.keepers.Market.OnOrderClosed(ctx, order)
-	// ms.keepers.Market.OnLeaseClosed(ctx, lease)
-	// ms.keepers.Deployment.OnOrderClosed(ctx, order.ID().GroupID())
 
 	return &types.MsgCloseLeaseResponse{}, nil
 }

@@ -34,7 +34,6 @@ type AuditKeeper interface {
 type DeploymentKeeper interface {
 	GetGroup(ctx sdk.Context, id dtypes.GroupID) (dtypes.Group, bool)
 	OnLeaseCreated(ctx sdk.Context, id dtypes.GroupID)
-	OnLeaseInsufficientFunds(ctx sdk.Context, id dtypes.GroupID)
 	OnOrderClosed(ctx sdk.Context, id dtypes.GroupID)
 	OnBidClosed(ctx sdk.Context, id dtypes.GroupID)
 }
