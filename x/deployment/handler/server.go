@@ -184,9 +184,48 @@ func (ms msgServer) CloseGroup(goCtx context.Context, msg *types.MsgCloseGroup) 
 }
 
 func (ms msgServer) PauseGroup(goCtx context.Context, msg *types.MsgPauseGroup) (*types.MsgPauseGroupResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	group, found := ms.deployment.GetGroup(ctx, msg.ID)
+	if !found {
+		return nil, types.ErrGroupNotFound
+	}
+
+	// if Group already closed; return the validation error
+	err := group.ValidatePausable()
+	if err != nil {
+		return nil, err
+	}
+
+	// Update the Group's state
+	err = ms.deployment.OnPauseGroup(ctx, group)
+	if err != nil {
+		return nil, err
+	}
+	ms.market.OnGroupClosed(ctx, group.ID())
+
 	return &types.MsgPauseGroupResponse{}, nil
 }
 
 func (ms msgServer) StartGroup(goCtx context.Context, msg *types.MsgStartGroup) (*types.MsgStartGroupResponse, error) {
+	ctx := sdk.UnwrapSDKContext(goCtx)
+
+	group, found := ms.deployment.GetGroup(ctx, msg.ID)
+	if !found {
+		return &types.MsgStartGroupResponse{}, types.ErrGroupNotFound
+	}
+
+	// if Group already closed; return the validation error
+	err := group.ValidateStartable()
+	if err != nil {
+		return &types.MsgStartGroupResponse{}, err
+	}
+
+	err = ms.deployment.OnStartGroup(ctx, group)
+	if err != nil {
+		return &types.MsgStartGroupResponse{}, err
+	}
+	ms.market.CreateOrder(ctx, group.ID(), group.GroupSpec)
+
 	return &types.MsgStartGroupResponse{}, nil
 }

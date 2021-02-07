@@ -160,6 +160,44 @@ func (k Keeper) OnCloseGroup(ctx sdk.Context, group types.Group) error {
 	return nil
 }
 
+// OnPauseGroup provides shutdown API for a Group
+func (k Keeper) OnPauseGroup(ctx sdk.Context, group types.Group) error {
+	store := ctx.KVStore(k.skey)
+	key := groupKey(group.ID())
+
+	if !store.Has(key) {
+		return types.ErrGroupNotFound
+	}
+	group.State = types.GroupPaused
+
+	ctx.EventManager().EmitEvent(
+		types.NewEventGroupPaused(group.ID()).
+			ToSDKEvent(),
+	)
+
+	store.Set(key, k.cdc.MustMarshalBinaryBare(&group))
+	return nil
+}
+
+// OnStartGroup provides shutdown API for a Group
+func (k Keeper) OnStartGroup(ctx sdk.Context, group types.Group) error {
+	store := ctx.KVStore(k.skey)
+	key := groupKey(group.ID())
+
+	if !store.Has(key) {
+		return types.ErrGroupNotFound
+	}
+	group.State = types.GroupOpen
+
+	ctx.EventManager().EmitEvent(
+		types.NewEventGroupStarted(group.ID()).
+			ToSDKEvent(),
+	)
+
+	store.Set(key, k.cdc.MustMarshalBinaryBare(&group))
+	return nil
+}
+
 // WithDeployments iterates all deployments in deployment store
 func (k Keeper) WithDeployments(ctx sdk.Context, fn func(types.Deployment) bool) {
 	store := ctx.KVStore(k.skey)

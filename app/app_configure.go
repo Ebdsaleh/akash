@@ -65,6 +65,7 @@ func (app *AkashApp) setAkashKeepers() {
 		app.appCodec,
 		app.keys[market.StoreKey],
 		app.GetSubspace(market.ModuleName),
+		app.keeper.escrow,
 	)
 
 	app.keeper.escrow.

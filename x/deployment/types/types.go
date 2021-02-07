@@ -142,6 +142,26 @@ func (g Group) ValidateClosable() error {
 	}
 }
 
+// ValidatePausable provides error response if group is not pausable
+func (g Group) ValidatePausable() error {
+	switch g.State {
+	case GroupClosed, GroupPaused:
+		return ErrGroupClosed
+	default:
+		return nil
+	}
+}
+
+// ValidatePausable provides error response if group is not pausable
+func (g Group) ValidateStartable() error {
+	switch g.State {
+	case GroupPaused:
+		return ErrGroupClosed
+	default:
+		return nil
+	}
+}
+
 // GetName method returns group name
 func (g Group) GetName() string {
 	return g.GroupSpec.Name

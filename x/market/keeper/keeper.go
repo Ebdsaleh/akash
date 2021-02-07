@@ -17,22 +17,24 @@ const (
 
 // Keeper of the market store
 type Keeper struct {
-	cdc    codec.BinaryMarshaler
-	skey   sdk.StoreKey
-	pspace paramtypes.Subspace
+	cdc     codec.BinaryMarshaler
+	skey    sdk.StoreKey
+	pspace  paramtypes.Subspace
+	ekeeper EscrowKeeper
 }
 
 // NewKeeper creates and returns an instance for Market keeper
-func NewKeeper(cdc codec.BinaryMarshaler, skey sdk.StoreKey, pspace paramtypes.Subspace) Keeper {
+func NewKeeper(cdc codec.BinaryMarshaler, skey sdk.StoreKey, pspace paramtypes.Subspace, ekeeper EscrowKeeper) Keeper {
 
 	if !pspace.HasKeyTable() {
 		pspace = pspace.WithKeyTable(types.ParamKeyTable())
 	}
 
 	return Keeper{
-		skey:   skey,
-		cdc:    cdc,
-		pspace: pspace,
+		skey:    skey,
+		cdc:     cdc,
+		pspace:  pspace,
+		ekeeper: ekeeper,
 	}
 }
 
@@ -162,6 +164,9 @@ func (k Keeper) OnBidClosed(ctx sdk.Context, bid types.Bid) {
 	}
 	bid.State = types.BidClosed
 	k.updateBid(ctx, bid)
+
+	k.ekeeper.AccountClose(ctx, types.EscrowAccountForBid(bid.ID()))
+
 	ctx.EventManager().EmitEvent(
 		types.NewEventBidClosed(bid.ID(), bid.Price).
 			ToSDKEvent(),
@@ -170,7 +175,6 @@ func (k Keeper) OnBidClosed(ctx sdk.Context, bid types.Bid) {
 
 // OnOrderClosed updates order state to closed
 func (k Keeper) OnOrderClosed(ctx sdk.Context, order types.Order) {
-	// TODO: assert state transition
 	if order.State == types.OrderClosed {
 		return
 	}
@@ -201,7 +205,6 @@ func (k Keeper) OnInsufficientFunds(ctx sdk.Context, lease types.Lease) {
 
 // OnLeaseClosed updates lease state to closed
 func (k Keeper) OnLeaseClosed(ctx sdk.Context, lease types.Lease) {
-	// TODO: assert state transition
 	switch lease.State {
 	case types.LeaseClosed, types.LeaseInsufficientFunds:
 		return
@@ -209,6 +212,11 @@ func (k Keeper) OnLeaseClosed(ctx sdk.Context, lease types.Lease) {
 	lease.State = types.LeaseClosed
 	k.updateLease(ctx, lease)
 	ctx.Logger().Info("keeper closed lease", "lease", lease.ID())
+
+	k.ekeeper.PaymentClose(ctx,
+		dtypes.EscrowAccountForDeployment(lease.ID().DeploymentID()),
+		types.EscrowPaymentForBid(lease.ID().BidID()))
+
 	ctx.EventManager().EmitEvent(
 		types.NewEventLeaseClosed(lease.ID(), lease.Price).
 			ToSDKEvent(),
@@ -222,7 +230,6 @@ func (k Keeper) OnGroupClosed(ctx sdk.Context, id dtypes.GroupID) {
 		k.WithBidsForOrder(ctx, order.ID(), func(bid types.Bid) bool {
 			k.OnBidClosed(ctx, bid)
 			if lease, ok := k.GetLease(ctx, types.LeaseID(bid.ID())); ok {
-				// TODO: emit events
 				k.OnLeaseClosed(ctx, lease)
 			}
 			return false

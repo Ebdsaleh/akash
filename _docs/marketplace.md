@@ -258,6 +258,24 @@ of bids that have expired.
 | `ACTIVE` | Active lease - tenant is paying provider on every block.|
 | `CLOSED` | No payments being made. Terminal. |
 
+# workflow
+
+## create deployment
+
+1. x/deployment: create deployment
+1. x/deployment: create group
+1. x/market:     create order
+
+## close deployment
+
+1. x/escrow: close account
+
+## close group
+
+1. x/deployment: close group
+1. x/market: on group closed
+1. x/market: on bid   closed
+
 [deployment]: #deployment
 [deployments]: #deployment
 [group]: #group
@@ -268,3 +286,4 @@ of bids that have expired.
 [bids]: #bid
 [lease]: #lease
 [leases]: #lease
+
